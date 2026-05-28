@@ -1,0 +1,10 @@
+pandas>=2.0
+numpy>=1.24
+scikit-learn>=1.3
+imbalanced-learn>=0.12
+torch>=2.1
+fairlearn>=0.10
+synthcity>=0.2.10
+sdv>=1.13
+opacus>=1.4
+causal-learn>=0.1.4.7

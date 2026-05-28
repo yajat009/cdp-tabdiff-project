@@ -1,0 +1,7 @@
+Requirement already satisfied: imbalanced-learn in /data/homezvol1/ynagaraj/.local/lib/python3.10/site-packages (0.14.1)
+Requirement already satisfied: numpy<3,>=1.25.2 in /data/homezvol1/ynagaraj/.local/lib/python3.10/site-packages (from imbalanced-learn) (1.26.4)
+Requirement already satisfied: scipy<2,>=1.11.4 in /data/homezvol1/ynagaraj/.local/lib/python3.10/site-packages (from imbalanced-learn) (1.15.3)
+Requirement already satisfied: scikit-learn<2,>=1.4.2 in /data/homezvol1/ynagaraj/.local/lib/python3.10/site-packages (from imbalanced-learn) (1.7.2)
+Requirement already satisfied: sklearn-compat<0.2,>=0.1.5 in /data/homezvol1/ynagaraj/.local/lib/python3.10/site-packages (from imbalanced-learn) (0.1.5)
+Requirement already satisfied: joblib<2,>=1.2.0 in /data/homezvol1/ynagaraj/.local/lib/python3.10/site-packages (from imbalanced-learn) (1.5.3)
+Requirement already satisfied: threadpoolctl<4,>=2.0.0 in /data/homezvol1/ynagaraj/miniconda3/envs/cdp-tabdiff/lib/python3.10/site-packages (from imbalanced-learn) (3.6.0)

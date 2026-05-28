@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Data & artifacts
+data/
+checkpoints/
+logs/
+results/
+workspace/
+*.ckpt
+*.pt
+*.pth
+*.npz
+*.h5
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
