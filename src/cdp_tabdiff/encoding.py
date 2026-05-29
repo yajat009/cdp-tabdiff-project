@@ -89,12 +89,13 @@ class StrokeEncoder:
             col = df[spec.name]
             state = _ColumnState(spec=spec)
             if spec.is_categorical:
-                vals = col.astype(str).tolist()
-                # Stable order: preserve first-seen for reproducibility.
-                seen: List[str] = []
-                for v in vals:
-                    if v not in seen:
-                        seen.append(v)
+                # Sorted level ordering so the one-hot index layout is
+                # deterministic across runs AND identical to the schema
+                # inference in ``infer_stroke_schema`` (which also sorts).
+                # First-seen ordering depended on post-shuffle row order and
+                # could silently flip the stroke one-hot block, inverting the
+                # class label seen by the model. See encoding/schema parity.
+                seen: List[str] = sorted(col.astype(str).unique().tolist())
                 if len(seen) > spec.cardinality:
                     raise ValueError(
                         f"column '{spec.name}' has {len(seen)} distinct "

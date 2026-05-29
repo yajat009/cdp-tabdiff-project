@@ -81,6 +81,21 @@ def rebalance_synthetic(
     if n_neg == 0:
         raise ValueError("rebalance_synthetic: no negative rows to keep.")
 
+    if len(pos) == 0:
+        # The synthesizer collapsed the rare class entirely. Surface this
+        # clearly instead of crashing inside ``sample`` on an empty frame so
+        # the synthesis-rate audit and downstream metrics still record the
+        # collapse rather than aborting the whole benchmark.
+        warnings.warn(
+            "rebalance_synthetic: synthesizer generated 0 positive rows "
+            "(class collapse) — returning negatives only. Check training "
+            "logs for DP noise scale and stroke-conditioning collapse.",
+            stacklevel=2,
+        )
+        return neg_out.sample(frac=1.0, random_state=random_state).reset_index(
+            drop=True
+        )
+
     n_pos = max(1, int(round(n_neg * target_rate / (1.0 - target_rate))))
 
     if len(pos) >= n_pos:

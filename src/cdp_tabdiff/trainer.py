@@ -217,6 +217,9 @@ class CDPTabDiffTrainer:
         use_adaptive_dp_noise: bool = True,
         adaptive_dp_minority_noise_scale: float = 0.5,
         adaptive_dp_majority_noise_scale: float = 1.0,
+        adaptive_dp_minority_grad_weight: float = 6.0,
+        adaptive_dp_majority_grad_weight: float = 1.0,
+        freeze_stroke_cond_embed: bool = True,
     ) -> None:
         _register_opacus_grad_sampler()
 
@@ -251,6 +254,9 @@ class CDPTabDiffTrainer:
         self.use_adaptive_dp_noise = use_adaptive_dp_noise
         self.adaptive_dp_minority_noise_scale = adaptive_dp_minority_noise_scale
         self.adaptive_dp_majority_noise_scale = adaptive_dp_majority_noise_scale
+        self.adaptive_dp_minority_grad_weight = adaptive_dp_minority_grad_weight
+        self.adaptive_dp_majority_grad_weight = adaptive_dp_majority_grad_weight
+        self.freeze_stroke_cond_embed = freeze_stroke_cond_embed
         self._continuous_slices = [
             model.feature_slice(spec.name)
             for spec in model.schema
@@ -501,10 +507,22 @@ class CDPTabDiffTrainer:
         )
 
         # DP noise should apply only to score-network weights, not the
-        # sinusoidal time embedding MLP (conditioning path).
+        # conditioning pathways. The time-embedding MLP and the stroke
+        # class-conditioning embedding are excluded from DP-SGD: they are
+        # tiny label/timestep lookups, and leaving the 2x time_dim stroke
+        # embedding inside DP lets the heavy noise multiplier (~1.3 at
+        # eps=8) collapse the stroke=0 and stroke=1 vectors toward each
+        # other, which destroys class conditioning at sampling time. The
+        # downstream score network (which actually maps these codes to
+        # class-conditional features) remains fully private.
         if dp_enabled:
             for param in self.model.time_embed.parameters():
                 param.requires_grad = False
+            if self.freeze_stroke_cond_embed and hasattr(
+                self.model, "stroke_cond_embed"
+            ):
+                for param in self.model.stroke_cond_embed.parameters():
+                    param.requires_grad = False
 
         if dp_enabled:
             from opacus import PrivacyEngine
@@ -531,11 +549,15 @@ class CDPTabDiffTrainer:
                     self.optimizer,
                     minority_noise_scale=self.adaptive_dp_minority_noise_scale,
                     majority_noise_scale=self.adaptive_dp_majority_noise_scale,
+                    minority_grad_weight=self.adaptive_dp_minority_grad_weight,
+                    majority_grad_weight=self.adaptive_dp_majority_grad_weight,
                 )
                 log_fn(
                     "[DP] class-adaptive noise enabled: "
                     f"minority_scale={self.adaptive_dp_minority_noise_scale} "
                     f"majority_scale={self.adaptive_dp_majority_noise_scale} "
+                    f"minority_grad_weight={self.adaptive_dp_minority_grad_weight} "
+                    f"majority_grad_weight={self.adaptive_dp_majority_grad_weight} "
                     "(epsilon budget assumes majority scale)"
                 )
         else:
@@ -593,13 +615,50 @@ class CDPTabDiffTrainer:
         self._sync_weights_from_wrapped()
         return self.state
 
-    def _sync_weights_from_wrapped(self) -> None:
-        """Copy trained params from the Opacus wrapper onto the raw model."""
+    def _sync_weights_from_wrapped(self, log_fn: Callable[[str], None] = print) -> None:
+        """Copy trained params from the Opacus wrapper onto the raw model.
+
+        Opacus prefixes module keys with ``_module.`` and the prefix-stripping
+        behaviour differs across versions; a silent ``strict=False`` load can
+        leave the raw model at its random init, so ``generate_samples`` would
+        run on an untrained network (a classic "loss drops but samples are
+        garbage" collapse). We therefore log any key mismatch and assert that
+        at least one parameter actually changed.
+        """
+        # Reference a *trainable* parameter; frozen conditioning params
+        # (time_embed / stroke_cond_embed) legitimately never change and
+        # would trigger a false "unchanged" warning.
+        trainable = {
+            name
+            for name, p in self._raw_model.named_parameters()
+            if p.requires_grad
+        }
+        raw_sd = self._raw_model.state_dict()
+        ref_name = next((k for k in raw_sd if k in trainable), None)
+        if ref_name is None:
+            ref_name = next(iter(raw_sd))
+        ref_before = raw_sd[ref_name].detach().clone()
         try:
             wrapped = getattr(self.model, "_module", self.model)
-            self._raw_model.load_state_dict(wrapped.state_dict(), strict=False)
+            missing, unexpected = self._raw_model.load_state_dict(
+                wrapped.state_dict(), strict=False
+            )
+            if missing:
+                log_fn(f"[warn] weight sync missing keys: {list(missing)}")
+            if unexpected:
+                log_fn(f"[warn] weight sync unexpected keys: {list(unexpected)}")
         except Exception as exc:  # pragma: no cover
             print(f"[warn] could not sync weights from wrapped model: {exc}")
+            return
+        ref_after = self._raw_model.state_dict()[ref_name]
+        delta = float((ref_after - ref_before).abs().max().item())
+        if delta == 0.0:
+            log_fn(
+                f"[warn] weight sync: '{ref_name}' unchanged after training "
+                "(possible failed sync — sampling may use untrained weights)."
+            )
+        else:
+            log_fn(f"[sync] raw model updated (max|Δ '{ref_name}'|={delta:.4g}).")
 
     def save_checkpoint(self, path) -> None:
         """Persist the trained denoiser weights to ``path``."""

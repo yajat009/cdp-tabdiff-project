@@ -1,0 +1,54 @@
+=== MODE=nondp epochs=60 T=200 dp=False ===
+[imbalance] train stroke rate=0.1667 loss_reweight=False dim_w=15.0 sample_w=15.0
+Disabling PyTorch because PyTorch >= 2.4 is required but found 2.2.2+cu118
+PyTorch was not found. Models won't be available and only tokenizers, configuration and file/data utilities can be used.
+[DP] disabled — running standard (non-private) training
+[end epoch 1] loss=0.3586
+[end epoch 2] loss=0.3005
+[end epoch 3] loss=0.2810
+[end epoch 4] loss=0.2410
+[end epoch 5] loss=0.2421
+[end epoch 6] loss=0.2291
+[end epoch 7] loss=0.2448
+[end epoch 8] loss=0.2167
+[end epoch 9] loss=0.2338
+[end epoch 10] loss=0.2188
+[end epoch 11] loss=0.1873
+epoch 12/60 step 200: loss=0.2104
+[end epoch 12] loss=0.2258
+[end epoch 13] loss=0.2185
+[end epoch 14] loss=0.1878
+[end epoch 15] loss=0.1897
+[end epoch 16] loss=0.1960
+[end epoch 17] loss=0.1983
+[end epoch 18] loss=0.1802
+[end epoch 19] loss=0.1763
+[end epoch 20] loss=0.1821
+[end epoch 21] loss=0.1789
+[end epoch 22] loss=0.1619
+[end epoch 23] loss=0.1973
+epoch 24/60 step 400: loss=0.1557
+[end epoch 24] loss=0.1574
+[end epoch 25] loss=0.1690
+[end epoch 26] loss=0.1865
+[end epoch 27] loss=0.1758
+[end epoch 28] loss=0.1594
+[end epoch 29] loss=0.1573
+[end epoch 30] loss=0.1597
+[end epoch 31] loss=0.1717
+[end epoch 32] loss=0.1479
+[end epoch 33] loss=0.1663
+[end epoch 34] loss=0.1481
+[end epoch 35] loss=0.1631
+epoch 36/60 step 600: loss=0.1532
+[end epoch 36] loss=0.1338
+[end epoch 37] loss=0.1505
+[end epoch 38] loss=0.1593
+[end epoch 39] loss=0.1353
+[end epoch 40] loss=0.1434
+[end epoch 41] loss=0.1471
+[end epoch 42] loss=0.1424
+[end epoch 43] loss=0.1470
+[end epoch 44] loss=0.1440
+[end epoch 45] loss=0.1411
+[end epoch 46] loss=0.1476

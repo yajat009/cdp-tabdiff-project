@@ -43,8 +43,18 @@ DIFFUSION_CFG_SCALE = 2.0           # classifier-free guidance scale at sampling
 
 # Plan A — class-conditional adaptive DP noise (toggleable)
 USE_ADAPTIVE_DP_NOISE = True
-ADAPTIVE_DP_MINORITY_NOISE_SCALE = 0.5   # less noise on stroke=1 gradients
-ADAPTIVE_DP_MAJORITY_NOISE_SCALE = 1.0   # base noise on stroke=0 gradients
+ADAPTIVE_DP_MINORITY_NOISE_SCALE = 0.5   # less noise on stroke=1 gradients (privacy knob)
+ADAPTIVE_DP_MAJORITY_NOISE_SCALE = 1.0   # base noise on stroke=0 gradients (privacy knob)
+# Optimization knob: up-weight the (clipped, noised) minority-class gradient
+# contribution so it is not out-voted by the majority sum. Loss-level
+# reweighting is cancelled by per-sample clipping under DP-SGD, so this is the
+# effective lever for minority signal. Scales signal and privacy-calibrated
+# noise together => does not change the per-class privacy guarantee.
+ADAPTIVE_DP_MINORITY_GRAD_WEIGHT = 6.0
+ADAPTIVE_DP_MAJORITY_GRAD_WEIGHT = 1.0
+# Exclude the 2x time_dim stroke conditioning embedding from DP noise so the
+# two class codes don't collapse together under the noise multiplier.
+FREEZE_STROKE_COND_EMBED = True
 
 # Backwards-compatible alias
 DIFFUSION_STROKE_LOSS_WEIGHT = STROKE_DIM_LOSS_WEIGHT

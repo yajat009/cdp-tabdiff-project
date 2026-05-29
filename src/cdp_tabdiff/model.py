@@ -262,7 +262,12 @@ class CDPTabDiffDenoiser(nn.Module):
         self.input_proj = CausalMaskedLinear(
             self.input_dim, self.hidden_dim, mask=input_mask
         )
-        self.input_skip = nn.Linear(self.input_dim, self.hidden_dim)
+        # The skip connection must respect the same causal mask as input_proj;
+        # a dense nn.Linear here would re-open severed pathways (e.g.
+        # gender -> stroke), silently defeating the fairness masking.
+        self.input_skip = CausalMaskedLinear(
+            self.input_dim, self.hidden_dim, mask=input_mask
+        )
         self.input_norm = nn.LayerNorm(self.hidden_dim)
 
         # ------------------------------------------------------------------

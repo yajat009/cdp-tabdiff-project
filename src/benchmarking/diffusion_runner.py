@@ -11,7 +11,9 @@ import pandas as pd
 import torch
 
 from benchmarking.config import (
+    ADAPTIVE_DP_MAJORITY_GRAD_WEIGHT,
     ADAPTIVE_DP_MAJORITY_NOISE_SCALE,
+    ADAPTIVE_DP_MINORITY_GRAD_WEIGHT,
     ADAPTIVE_DP_MINORITY_NOISE_SCALE,
     DATASET_NAME,
     DIFFUSION_CLIP_ZSCORE,
@@ -75,6 +77,8 @@ class DiffusionRunConfig:
     use_adaptive_dp_noise: bool = USE_ADAPTIVE_DP_NOISE
     adaptive_dp_minority_noise_scale: float = ADAPTIVE_DP_MINORITY_NOISE_SCALE
     adaptive_dp_majority_noise_scale: float = ADAPTIVE_DP_MAJORITY_NOISE_SCALE
+    adaptive_dp_minority_grad_weight: float = ADAPTIVE_DP_MINORITY_GRAD_WEIGHT
+    adaptive_dp_majority_grad_weight: float = ADAPTIVE_DP_MAJORITY_GRAD_WEIGHT
     p_uncond: float = DIFFUSION_P_UNCOND
     target_positive_rate: float = TARGET_POSITIVE_RATE
     use_oversampling: bool = USE_OVERSAMPLING
@@ -221,6 +225,8 @@ def run_diffusion_benchmark(cfg: DiffusionRunConfig) -> tuple[pd.DataFrame, Dict
         use_adaptive_dp_noise=cfg.use_adaptive_dp_noise and cfg.dp_enabled,
         adaptive_dp_minority_noise_scale=cfg.adaptive_dp_minority_noise_scale,
         adaptive_dp_majority_noise_scale=cfg.adaptive_dp_majority_noise_scale,
+        adaptive_dp_minority_grad_weight=cfg.adaptive_dp_minority_grad_weight,
+        adaptive_dp_majority_grad_weight=cfg.adaptive_dp_majority_grad_weight,
     )
 
     print(f"Training (dp_enabled={cfg.dp_enabled})...")
