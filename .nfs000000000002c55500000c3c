@@ -52,3 +52,21 @@ epoch 36/60 step 600: loss=0.1532
 [end epoch 44] loss=0.1440
 [end epoch 45] loss=0.1411
 [end epoch 46] loss=0.1476
+[end epoch 47] loss=0.1344
+epoch 48/60 step 800: loss=0.1401
+[end epoch 48] loss=0.1329
+[end epoch 49] loss=0.1213
+[end epoch 50] loss=0.1452
+[end epoch 51] loss=0.1524
+[end epoch 52] loss=0.1452
+[end epoch 53] loss=0.1313
+[end epoch 54] loss=0.1229
+[end epoch 55] loss=0.1468
+[end epoch 56] loss=0.1273
+[end epoch 57] loss=0.1477
+[end epoch 58] loss=0.1426
+epoch 59/60 step 1000: loss=0.1389
+[end epoch 59] loss=0.1442
+[end epoch 60] loss=0.1486
+[warn] weight sync: 'time_embed.1.weight' unchanged after training (possible failed sync — sampling may use untrained weights).
+training done; sampling...

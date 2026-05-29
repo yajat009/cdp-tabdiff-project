@@ -15,3 +15,5 @@ epoch 6/120 step 100: loss=0.2413
 [end epoch 8] loss=0.2162
 epoch 9/120 step 150: loss=0.2126
 [end epoch 9] loss=0.2336
+[end epoch 10] loss=0.2182
+[end epoch 11] loss=0.1874
