@@ -36,10 +36,23 @@ USE_STROKE_LOSS_REWEIGHTING = True
 STROKE_DIM_LOSS_WEIGHT = 15.0       # up-weight MSE on stroke one-hot dimensions
 STROKE_SAMPLE_LOSS_WEIGHT = 15.0    # per-row multiplier for stroke=1 in weighted MSE
 
+# Per-dimension MSE weight on the 3 continuous columns (age, avg_glucose_level,
+# bmi). Only 3 of 24 encoded dims are continuous, so an unweighted DDPM MSE
+# lets the ~21 one-hot categorical dims dominate the gradient; the continuous
+# score then never trains and the reverse process diverges to the clip bounds.
+# Up-weighting the continuous dims (~21/3 to equalise their loss contribution)
+# fixes the collapse. Set to 1.0 to disable.
+# Up-weighting the continuous dims helps the non-DP model but HURTS the DP
+# model (the DP-noised continuous gradient can't exploit the extra budget and
+# the loss is swamped), so it is disabled (1.0) by default. The lever is kept
+# for experimentation. The continuous mode-collapse fix that actually matters
+# is the x0-clamped reverse step in CDPTabDiffTrainer.generate_samples.
+CONTINUOUS_DIM_LOSS_WEIGHT = 1.0
+
 # Stroke class conditioning (fixes label-feature decoupling at sampling)
 USE_STROKE_CONDITIONING = True      # broadcast stroke label embedding to all layers
 USE_STROKE_TRAIN_INPAINTING = True  # keep stroke block aligned to label during training
-DIFFUSION_CFG_SCALE = 2.0           # classifier-free guidance scale at sampling (>1 amplifies)
+DIFFUSION_CFG_SCALE = 2.0           # classifier-free guidance scale at sampling (>1 amplifies). NOTE: cfg>1 over-saturates the continuous dims somewhat (biases glucose/bmi high, age low), BUT it is essential for stroke class separation — cfg=1.0 collapses TSTR AUROC to ~0.5. Keep >=2.0.
 
 # Plan A — class-conditional adaptive DP noise (toggleable)
 USE_ADAPTIVE_DP_NOISE = True
@@ -84,7 +97,8 @@ MODELS = tuple(SYNTHCITY_MODELS + SDV_MODELS + NOVEL_MODELS + ABLATION_MODELS)
 PLUGIN_KWARGS = {
     # --- SynthCity plugins ---
     # ``target_column`` is set on GenericDataLoader for conditional training.
-    "ctgan": {"n_iter": N_ITER, "batch_size": 500, "pac": 1},
+    # NOTE: this synthcity build's CTGAN plugin does not accept ``pac``.
+    "ctgan": {"n_iter": N_ITER, "batch_size": 500},
     "tvae": {"n_iter": N_ITER, "batch_size": 500},
     "adsgan": {"n_iter": N_ITER, "batch_size": 500},
     "dpgan": {"n_iter": N_ITER, "batch_size": 500, "epsilon": 1.0},

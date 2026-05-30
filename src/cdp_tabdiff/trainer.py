@@ -214,6 +214,7 @@ class CDPTabDiffTrainer:
         use_stroke_loss_reweighting: bool = True,
         stroke_dim_loss_weight: float = 15.0,
         stroke_sample_loss_weight: float = 15.0,
+        continuous_dim_loss_weight: float = 1.0,
         use_adaptive_dp_noise: bool = True,
         adaptive_dp_minority_noise_scale: float = 0.5,
         adaptive_dp_majority_noise_scale: float = 1.0,
@@ -262,6 +263,15 @@ class CDPTabDiffTrainer:
             for spec in model.schema
             if not spec.is_categorical
         ]
+        # Per-dimension MSE weighting: up-weight the (few) continuous dims so
+        # they are not drowned out by the many one-hot categorical dims. Only
+        # built here when an explicit per-dim vector wasn't already provided.
+        self.continuous_dim_loss_weight = continuous_dim_loss_weight
+        if self.sample_loss_weights is None and continuous_dim_loss_weight != 1.0:
+            dim_w = torch.ones(self.input_dim, dtype=torch.float32, device=self.device)
+            for sl in self._continuous_slices:
+                dim_w[sl] = continuous_dim_loss_weight
+            self.sample_loss_weights = dim_w
         self._rng = np.random.default_rng(42)
 
         self.optimizer: Optional[torch.optim.Optimizer] = None
@@ -435,19 +445,20 @@ class CDPTabDiffTrainer:
             stroke_cond_drop=drop_mask if self.use_stroke_conditioning else None,
         )
 
-        # Weighted DP-MSE: amplify stroke=1 gradients before Opacus clipping.
+        # Weighted DP-MSE. Two independent reweightings, applied together:
+        #   * per-dimension weights up-weight the continuous columns so their
+        #     score actually trains (they are only ~12% of the encoded dims);
+        #   * per-sample weights amplify stroke=1 rows before Opacus clipping.
         sq_error = (eps_hat - noise) ** 2
+        if self.sample_loss_weights is not None:
+            sq_error = sq_error * self.sample_loss_weights  # (D,) broadcast over (B, D)
         if self.use_stroke_loss_reweighting:
             weights = torch.where(
                 stroke_labels == 1,
                 torch.full((B,), self.stroke_sample_loss_weight, device=self.device),
                 torch.ones(B, device=self.device),
             )
-            loss = torch.mean(weights.view(B, 1) * sq_error)
-            return loss
-
-        if self.sample_loss_weights is not None:
-            sq_error = sq_error * self.sample_loss_weights
+            return torch.mean(weights.view(B, 1) * sq_error)
         return sq_error.mean()
 
     # ------------------------------------------------------------------
@@ -741,8 +752,27 @@ class CDPTabDiffTrainer:
                 beta_t = sched.betas[t_int]
                 alpha_t = sched.alphas[t_int]
                 alpha_bar_t = sched.alphas_cumprod[t_int]
-                coef = beta_t / torch.sqrt(1.0 - alpha_bar_t)
-                mean = (x - coef * eps_hat) / torch.sqrt(alpha_t)
+                # Predict x0 from eps, clamp its continuous dims to a sane
+                # z-range, then build the DDPM posterior mean from the
+                # *clamped x0*. Clamping the latent instead (the old
+                # behaviour) let imperfect-score errors accumulate over the
+                # 1000-step reverse chain and drove the unbounded continuous
+                # dims out to the clip boundary -> continuous mode collapse.
+                x0_hat = (
+                    x - torch.sqrt(1.0 - alpha_bar_t) * eps_hat
+                ) / torch.sqrt(alpha_bar_t)
+                if clip_x0:
+                    x0_hat = self._clip_continuous(x0_hat)
+                alpha_bar_prev = (
+                    sched.alphas_cumprod[t_int - 1]
+                    if t_int > 0
+                    else torch.ones((), device=self.device)
+                )
+                coef_x0 = torch.sqrt(alpha_bar_prev) * beta_t / (1.0 - alpha_bar_t)
+                coef_xt = (
+                    torch.sqrt(alpha_t) * (1.0 - alpha_bar_prev) / (1.0 - alpha_bar_t)
+                )
+                mean = coef_x0 * x0_hat + coef_xt * x
                 if t_int > 0:
                     noise = torch.randn_like(x)
                     sigma = torch.sqrt(sched.posterior_variance[t_int])
@@ -752,8 +782,6 @@ class CDPTabDiffTrainer:
                 x = self._condition_stroke_slice(
                     x, max(t_int - 1, 0), x0_stroke, stroke_noise
                 )
-                if clip_x0:
-                    x = self._clip_continuous(x)
 
             x = self._clip_continuous(x)
             chunks.append(x.cpu())

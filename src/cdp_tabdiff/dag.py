@@ -148,7 +148,7 @@ def _run_pc(
         raise ValueError(
             f"Unknown indep_test '{indep_test}'. Use auto, fisherz, or chisq_binned."
         )
-    return np.asarray(cg.G)
+    return np.asarray(cg.G.graph)
 
 
 def _preferred_parent_child(
@@ -195,9 +195,11 @@ def cpdag_to_adjacency(
         for j in range(p):
             if i == j:
                 continue
-            if cpdag[i, j] == 1 and cpdag[j, i] == -1:
+            if cpdag[i, j] == -1 and cpdag[j, i] == 1:
+                # i --> j: parent i, child j
                 adj[j, i] = 1.0
-            elif cpdag[i, j] == -1 and cpdag[j, i] == 1:
+            elif cpdag[i, j] == 1 and cpdag[j, i] == -1:
+                # j --> i: parent j, child i
                 adj[i, j] = 1.0
 
     for i in range(p):

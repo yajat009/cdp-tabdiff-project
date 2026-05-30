@@ -24,6 +24,7 @@ from benchmarking.config import (
     PC_INDEP_TEST,
     STROKE_DIM_LOSS_WEIGHT,
     STROKE_SAMPLE_LOSS_WEIGHT,
+    CONTINUOUS_DIM_LOSS_WEIGHT,
     RANDOM_STATE,
     RESULTS_DIR,
     TARGET_COLUMN,
@@ -70,6 +71,7 @@ class DiffusionRunConfig:
     lr: float = 1e-3
     stroke_dim_loss_weight: float = STROKE_DIM_LOSS_WEIGHT
     stroke_sample_loss_weight: float = STROKE_SAMPLE_LOSS_WEIGHT
+    continuous_dim_loss_weight: float = CONTINUOUS_DIM_LOSS_WEIGHT
     use_stroke_loss_reweighting: bool = USE_STROKE_LOSS_REWEIGHTING
     use_stroke_conditioning: bool = USE_STROKE_CONDITIONING
     use_stroke_train_inpainting: bool = USE_STROKE_TRAIN_INPAINTING
@@ -222,6 +224,7 @@ def run_diffusion_benchmark(cfg: DiffusionRunConfig) -> tuple[pd.DataFrame, Dict
         use_stroke_loss_reweighting=cfg.use_stroke_loss_reweighting,
         stroke_dim_loss_weight=cfg.stroke_dim_loss_weight,
         stroke_sample_loss_weight=cfg.stroke_sample_loss_weight,
+        continuous_dim_loss_weight=cfg.continuous_dim_loss_weight,
         use_adaptive_dp_noise=cfg.use_adaptive_dp_noise and cfg.dp_enabled,
         adaptive_dp_minority_noise_scale=cfg.adaptive_dp_minority_noise_scale,
         adaptive_dp_majority_noise_scale=cfg.adaptive_dp_majority_noise_scale,
